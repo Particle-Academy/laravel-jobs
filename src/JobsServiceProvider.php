@@ -7,8 +7,10 @@ namespace ParticleAcademy\LaravelJobs;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use ParticleAcademy\LaravelJobs\Contracts\AuthorizesEmployers;
+use ParticleAcademy\LaravelJobs\Contracts\GatesPublishing;
 use ParticleAcademy\LaravelJobs\Services\ApplicationService;
 use ParticleAcademy\LaravelJobs\Services\JobPostingService;
+use ParticleAcademy\LaravelJobs\Support\ApprovalPublishGate;
 use ParticleAcademy\LaravelJobs\Support\CandidateResolver;
 use ParticleAcademy\LaravelJobs\Support\DenyAllEmployerAuthorizer;
 use ParticleAcademy\LaravelJobs\Support\EmployerGate;
@@ -25,6 +27,10 @@ class JobsServiceProvider extends ServiceProvider
         // Deny-by-default. Hosts override this binding with their own ownership
         // rule; until they do, every employer endpoint refuses.
         $this->app->singletonIf(AuthorizesEmployers::class, DenyAllEmployerAuthorizer::class);
+
+        // Publishing defaults to the employer_gate approval column. Hosts with a
+        // richer rule — paid listings, plan quotas — bind their own.
+        $this->app->singletonIf(GatesPublishing::class, ApprovalPublishGate::class);
         $this->app->singleton(JobPostingService::class);
         $this->app->singleton(ApplicationService::class);
     }

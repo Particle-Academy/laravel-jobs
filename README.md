@@ -63,6 +63,43 @@ and the value that means "cleared":
 Drafting is always allowed. **Publishing** is what the gate applies to, so a
 pending employer can set everything up while it waits.
 
+### A richer rule
+
+Approval is only the default. Bind `GatesPublishing` to charge per listing,
+enforce a plan quota, or anything else:
+
+```php
+use ParticleAcademy\LaravelJobs\Contracts\GatesPublishing;
+use ParticleAcademy\LaravelJobs\Support\PublishDecision;
+
+class PaidListingGate implements GatesPublishing
+{
+    public function check(JobPosting $posting): PublishDecision
+    {
+        if ($this->alreadyPaid($posting)) {
+            return PublishDecision::allow();
+        }
+
+        return PublishDecision::deny(
+            reason: 'Publishing this listing costs $49.',
+            code:   'payment_required',
+            meta:   ['checkout_url' => $this->checkoutUrl($posting)],
+        );
+    }
+}
+```
+
+A denial is deliberately richer than `false`: the `code` and `meta` travel out
+to the caller, so your UI can send the employer to checkout rather than just
+showing an error. `payment_required` answers **402**; anything else **403**.
+
+Need to render "Publish — $49" without attempting the transition?
+`JobPostingService::publishDecision($posting)` asks the gate and changes nothing.
+
+Creating a posting with `status: published` runs the same gate, inside a
+transaction — so it cannot be used as a way around `publish()`, and a refusal
+leaves no orphan draft.
+
 ## API
 
 Mounted at `api/jobs` by default (`routes.prefix`).
