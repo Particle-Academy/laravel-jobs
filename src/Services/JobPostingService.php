@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace ParticleAcademy\LaravelJobs\Services;
 
+use Illuminate\Support\Facades\DB;
+use ParticleAcademy\LaravelJobs\Contracts\GatesPublishing;
 use ParticleAcademy\LaravelJobs\Enums\JobPostingStatus;
 use ParticleAcademy\LaravelJobs\Events\JobPostingClosed;
 use ParticleAcademy\LaravelJobs\Events\JobPostingPublished;
-use ParticleAcademy\LaravelJobs\Exceptions\EmployerNotApprovedException;
+use ParticleAcademy\LaravelJobs\Exceptions\PublishNotAllowedException;
 use ParticleAcademy\LaravelJobs\Models\JobPosting;
-use ParticleAcademy\LaravelJobs\Support\EmployerGate;
 
 class JobPostingService
 {
-    public function __construct(private readonly EmployerGate $gate)
+    public function __construct(private readonly GatesPublishing $gate)
     {
     }
 
@@ -26,13 +27,23 @@ class JobPostingService
         $attributes['status'] ??= JobPostingStatus::Draft->value;
         $attributes['currency'] ??= config('laravel-jobs.defaults.currency');
 
-        // Creating something already marked published still has to clear the gate.
-        if (($attributes['status'] ?? null) === JobPostingStatus::Published->value) {
-            $this->assertMayPublish($employerId);
-            $attributes['published_at'] ??= now();
+        $publishNow = ($attributes['status'] ?? null) === JobPostingStatus::Published->value;
+
+        if ($publishNow) {
+            // Creating something already marked published still has to pass the
+            // gate — otherwise it is a way around publish().
+            $attributes['status'] = JobPostingStatus::Draft->value;
         }
 
-        return JobPosting::query()->create($attributes);
+        if (! $publishNow) {
+            return JobPosting::query()->create($attributes);
+        }
+
+        // Atomic: a gate refusal here rolls the row back rather than leaving an
+        // orphan draft behind, which is what callers got before the gate existed.
+        return DB::transaction(function () use ($attributes): JobPosting {
+            return $this->publish(JobPosting::query()->create($attributes));
+        });
     }
 
     /**
@@ -49,9 +60,16 @@ class JobPostingService
         return $posting->refresh();
     }
 
+    /**
+     * @throws PublishNotAllowedException
+     */
     public function publish(JobPosting $posting): JobPosting
     {
-        $this->assertMayPublish($posting->employer_id);
+        $decision = $this->gate->check($posting);
+
+        if ($decision->denied()) {
+            throw new PublishNotAllowedException($decision);
+        }
 
         $posting->forceFill([
             'status'       => JobPostingStatus::Published,
@@ -62,6 +80,12 @@ class JobPostingService
         JobPostingPublished::dispatch($posting);
 
         return $posting->refresh();
+    }
+
+    /** Ask whether publishing would be allowed, without attempting it. */
+    public function publishDecision(JobPosting $posting)
+    {
+        return $this->gate->check($posting);
     }
 
     public function close(JobPosting $posting): JobPosting
@@ -84,12 +108,5 @@ class JobPostingService
         ])->save();
 
         return $posting->refresh();
-    }
-
-    private function assertMayPublish(int|string $employerId): void
-    {
-        if (! $this->gate->allowsPublishing($employerId)) {
-            throw new EmployerNotApprovedException($this->gate->reason());
-        }
     }
 }
