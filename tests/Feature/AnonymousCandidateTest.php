@@ -51,6 +51,14 @@ class AnonymousCandidateTest extends TestCase
             ->assertStatus(401);
     }
 
+    public function test_the_status_applies_to_a_plain_browser_request_too(): void
+    {
+        // Not getJson(). A host that mounts these on `web` gets browser-shaped
+        // requests, and render() returns null for those — so without
+        // HttpExceptionInterface the status was lost and Laravel produced a 500.
+        $this->get('/api/jobs/my-applications')->assertStatus(401);
+    }
+
     public function test_the_public_board_stays_open_to_anonymous_requests(): void
     {
         // The fix must not have closed the parts that are meant to be public.
