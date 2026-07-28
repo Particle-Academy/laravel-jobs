@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace ParticleAcademy\LaravelJobs\Support;
 
 use Illuminate\Http\Request;
-use RuntimeException;
+use ParticleAcademy\LaravelJobs\Exceptions\CandidateNotResolvedException;
 
 /**
  * Resolves the candidate's user id for the current request.
@@ -32,7 +32,7 @@ class CandidateResolver
             }
         }
 
-        throw new RuntimeException(
+        throw new CandidateNotResolvedException(
             'Unable to resolve candidate. Authenticate the request or supply user_id.',
         );
     }
@@ -41,7 +41,7 @@ class CandidateResolver
     {
         try {
             return $this->resolve($request);
-        } catch (RuntimeException) {
+        } catch (CandidateNotResolvedException) {
             return null;
         }
     }
