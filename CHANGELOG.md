@@ -10,6 +10,10 @@ upgrading.
 
 ## [Unreleased]
 
+## 0.1.0 — 2026-08-01
+
+**First published release.** Job postings and applications for Laravel, with host-supplied employer/user models and deny-by-default authorization (`AuthorizesEmployers`, `GatesPublishing`) — removing a host binding switches the feature off rather than opening it up.
+
 ### Added
 
 - **CI** — matching the rest of the Fancy kit.
