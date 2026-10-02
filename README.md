@@ -131,6 +131,30 @@ Mounted at `api/jobs` by default (`routes.prefix`).
 | `GET /employers/{employer}/applications` | Who applied, across your postings. |
 | `PATCH /employers/{employer}/applications/{application}` | Advance an applicant. |
 
+## A working consumer you can read
+
+[`laravel-jobs-reference`](https://github.com/Particle-Academy/laravel-jobs-reference) is a real Laravel app that installs this package
+from Packagist the way you would, and asserts the things that only break once
+there is an app — auth, middleware, status codes, response envelopes, and the host
+bindings this package asks for.
+
+Worth reading before you wire your own, in particular:
+
+- **`ResumeDownloadController`** — serving a candidate's CV. This package stores a
+  `resume_path` and leaves serving to you, which means the obvious implementation is
+  `Storage::url()` on a public disk. That one uses a private disk, authorises every
+  request, allows exactly the candidate and the employer the application was sent to
+  (**not** admins), and returns **404 rather than 403**, because a 403 confirms an
+  application exists at that id.
+- **`JobsBindingsProvider`** — the host contracts, both of which refuse when unbound.
+  That is this package's best property and its least discoverable one: forget a
+  binding and the portal goes quiet rather than wide open.
+- **`NotifyEmployerOfApplication`** — the far end of a wire this package cannot
+  connect, and why `ShouldQueue` is not enough on its own.
+
+It found three of the defects fixed in 0.3.0, 0.4.0 and 0.5.0 — two of them
+invisible to a green suite here.
+
 ## Design notes
 
 - **Status transitions are not field updates.** `PATCH` silently drops `status`;
