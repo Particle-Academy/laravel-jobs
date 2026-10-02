@@ -8,6 +8,53 @@ upgrading.
 
 ---
 
+## [0.5.0] - 2026-10-02
+
+### Fixed
+
+- **BREAKING (timing) — a failing listener destroyed the candidate's
+  application.** The four events now implement `ShouldDispatchAfterCommit`.
+
+  `ApplicationService::submit()` dispatches `ApplicationSubmitted` from INSIDE its
+  `DB::transaction()`. Measured against 0.4.0 with a single listener that throws:
+
+  ```
+  job_applications rows       = 0
+  posting.applications_count  = 0
+  ```
+
+  The application was gone. A host whose notification listener hit a dead SMTP
+  server — or had any bug at all — silently lost applications. The candidate saw a
+  failure, the employer saw nothing, and the system was indistinguishable from one
+  with no applicants. A host could not fix this from outside without wrapping every
+  listener it ever writes in a try/catch, and never once forgetting.
+
+  Deferring to commit is also the correct semantics: `ApplicationSubmitted` asserts
+  that an application *was* submitted, which is not true until the transaction
+  commits. If it rolls back, the event should never have fired.
+
+  **What you must DO.** Almost certainly nothing. The events fire as before, a
+  moment later, and still synchronously within the request.
+
+  - **Your listener only reads the record, mails, queues a job or calls a
+    webhook** → nothing. This is strictly better: your failure can no longer take
+    the application with it.
+  - **Your listener writes in the same transaction and relies on rolling back
+    together with the application** → it no longer will. The event fires after
+    commit, so your write is a separate unit. This is the one case that changes
+    behaviour, and if you are in it you almost certainly wanted
+    `DB::transaction()` in the listener instead.
+  - **You assert on event dispatch in a test using `Event::fake()`** → still
+    passes; faking intercepts before the deferral.
+
+  Note the trap this fix walks into, because it is also the reason the test exists:
+  `ShouldDispatchAfterCommit` defers dispatch to commit, and `RefreshDatabase`
+  wraps every test in a transaction that is rolled back and never commits. The
+  obvious failure mode is the events quietly never firing, in production as well
+  as in tests, with nothing to complain — no error, no listener, no assertion.
+  `EventsFireAfterCommitTest` asserts a real listener on the real service path
+  actually hears the event, and that test fails if the deferral ever swallows it.
+
 ## [0.4.0] - 2026-10-02
 
 ### Security
