@@ -30,7 +30,11 @@ class AnonymousCandidateTest extends TestCase
     {
         $this->getJson('/api/jobs/my-applications')
             ->assertStatus(401)
-            ->assertJsonPath('message', 'Unable to resolve candidate. Authenticate the request or supply user_id.');
+            // The message deliberately does NOT name `user_id`. It used to read
+            // "Authenticate the request or supply user_id", which told an
+            // unauthenticated caller how to spoof a candidate -- see
+            // CandidateIdentitySpoofTest.
+            ->assertJsonPath('message', 'Unable to resolve the candidate for this request.');
     }
 
     public function test_applying_anonymously_is_unauthorized_not_an_error(): void

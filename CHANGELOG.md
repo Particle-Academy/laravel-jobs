@@ -8,6 +8,82 @@ upgrading.
 
 ---
 
+## [0.4.0] - 2026-10-02
+
+### Security
+
+- **BREAKING — an unauthenticated caller could BE any candidate by saying so.**
+  `allow_input_user_id` now defaults to `false`.
+
+  `CandidateResolver` preferred `$request->user()` and fell back to a `user_id` in
+  the request body/query or an `X-Candidate-Id` header. That fallback was gated on
+  `laravel-jobs.allow_input_user_id`, which **defaulted to `true` and was not in
+  the published config file** — so a host could not switch off an option it had
+  never been shown.
+
+  The candidate routes mount `routes.middleware`, `['api']` by default with no
+  `auth`, because the package cannot know how a host authenticates. So on a
+  default install, measured against 0.3.0 and unauthenticated:
+
+  ```
+  GET  /api/jobs/my-applications?user_id=7
+       -> 200, that candidate's applications, including resume_path,
+          cover_letter, contact_email and contact_phone
+  POST /api/jobs/applications/3/withdraw   {"user_id": 7}
+       -> 200, and their application is withdrawn
+  ```
+
+  The `X-Candidate-Id` header did the same. The ownership checks downstream are
+  real — `forCandidate($resolved)`, and withdraw's
+  `$application->user_id !== $candidateId` — but they compare the record against
+  whatever identity arrived. They verify that the caller was *consistent*, not
+  that they are *who they claim*.
+
+  **What you must DO.** Almost certainly nothing:
+
+  - **Your routes have `auth` on them** (via `routes.middleware`) → nothing. An
+    authenticated user never reached the fallback; `$request->user()` wins.
+  - **You are an ordinary web/Inertia app using session auth** → nothing.
+  - **You deliberately pass `user_id` from a server-to-server caller or your own
+    tests** → set `LARAVEL_JOBS_ALLOW_INPUT_USER_ID=true`, or
+    `'allow_input_user_id' => true` in the published config, **and** make sure
+    that route is not anonymously reachable. The capability is unchanged; it is
+    now opt-in.
+  - **You are not sure** → the exposure is exactly "the candidate endpoints are
+    reachable without authentication". `php artisan route:list --path=api/jobs`
+    and look for `auth`.
+
+  Re-publish the config to see the new block, or add the key by hand:
+  `php artisan vendor:publish --tag=laravel-jobs-config --force`.
+
+- **The 401 no longer tells the caller how to spoof a candidate.** It read
+  *"Unable to resolve candidate. Authenticate the request or supply user_id."* —
+  the package documenting its own bypass in the response body. It now reads
+  *"Unable to resolve the candidate for this request."*
+
+  If you assert on that string, update it. Nothing else reads it.
+
+### Changed
+
+- `AGENTS.md` no longer claims anonymous applications are "supported
+  deliberately". Every application belongs to a user id and always did; what was
+  actually supported was taking that id from an untrusted request. The sentence
+  is how the hole read as a feature for two releases — and it cited the suite,
+  whose anonymous tests assert **401**. The doc and the tests disagreed and the
+  doc won the resolver's design.
+
+### Why the suite was green
+
+`AnonymousCandidateTest` covers the anonymous case carefully and correctly, and
+only ever sends **no** identity. The fallback it was 401-ing past was never
+exercised. It tested the locked door, not the window beside it.
+
+`CandidateIdentitySpoofTest` is the window. Six of its eight tests fail against
+0.3.0.
+
+Found while building the reference consumer app, by reading the resolver to
+answer an unrelated question about anonymous applications.
+
 ## [0.3.0] - 2026-10-02
 
 ### Security

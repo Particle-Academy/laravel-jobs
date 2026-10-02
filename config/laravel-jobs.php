@@ -44,6 +44,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Candidate identity
+    |--------------------------------------------------------------------------
+    |
+    | Trust a `user_id` in the request body/query, or an `X-Candidate-Id` header,
+    | as the candidate's identity when the request is NOT authenticated.
+    |
+    | OFF, and think hard before turning it on. The candidate routes mount the
+    | `routes.middleware` group below -- `['api']` by default, with no `auth` --
+    | because this package cannot know how your app authenticates. With this
+    | enabled and no `auth` on the routes, ANY anonymous caller can be any
+    | candidate by saying so:
+    |
+    |     GET  /api/jobs/my-applications?user_id=7
+    |     POST /api/jobs/applications/3/withdraw   {"user_id": 7}
+    |
+    | reading that candidate's resume path, cover letter, email and phone, and
+    | withdrawing their application. The ownership checks downstream are real, but
+    | they compare against whatever identity arrived -- so they verify consistency,
+    | not authorization.
+    |
+    | It exists for server-to-server callers and tests. If you enable it, you own
+    | the question of who can reach the route: put `auth` (or a signed-request
+    | middleware, or an internal-network restriction) on `routes.middleware`.
+    |
+    | This defaulted to TRUE and was absent from this file until 0.4.0, so hosts
+    | could not switch off an option they had never seen. See CHANGELOG 0.4.0.
+    |
+    */
+    'allow_input_user_id' => env('LARAVEL_JOBS_ALLOW_INPUT_USER_ID', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Route mounting
     |--------------------------------------------------------------------------
     */

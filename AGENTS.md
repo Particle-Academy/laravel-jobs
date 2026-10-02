@@ -40,9 +40,14 @@ employer          user (both host-owned, resolved from config)
 - **`PublishDecision` carries a `code` and `meta` on denial** so a host's own UI
   can react — send the employer to checkout, show a quota — rather than printing
   a generic error. Keep denials informative.
-- **Anonymous applications are supported deliberately.** `ApplicationService::submit()`
-  takes `int|string $userId`, and the suite covers the anonymous case. Don't
-  assume an authenticated applicant.
+- **There is no such thing as an anonymous application.** Every application
+  belongs to a user id; `ApplicationService::submit()` requires one and always
+  did. This bullet used to read "anonymous applications are supported
+  deliberately", citing a suite whose anonymous tests assert **401** — and that
+  sentence is how a security hole read as a feature for two releases. What was
+  actually supported was taking the id from an untrusted request
+  (`allow_input_user_id`, default **false** since 0.4.0). An unauthenticated
+  caller must stay unauthenticated.
 - **Status transitions are the audit trail.** `changeStatus()` takes optional
   notes; a candidate's history is why the enum has both `rejected` and
   `withdrawn` rather than one terminal state.
