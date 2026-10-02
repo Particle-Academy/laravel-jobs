@@ -63,6 +63,14 @@ upgrading.
 
   If you assert on that string, update it. Nothing else reads it.
 
+### Added
+
+- **A `composer test` script.** There was none, so `release-preflight` ran zero
+  commands against this package and still reported "its own checks pass" — on a
+  security release. The suite existed and was green the whole time; nothing
+  automated was running it. An absent script makes a test step pass by doing
+  nothing, which is the one defect that hides itself.
+
 ### Changed
 
 - `AGENTS.md` no longer claims anonymous applications are "supported
