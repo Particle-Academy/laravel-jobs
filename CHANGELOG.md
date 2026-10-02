@@ -53,7 +53,11 @@ upgrading.
     reachable without authentication". `php artisan route:list --path=api/jobs`
     and look for `auth`.
 
-  Re-publish the config to see the new block, or add the key by hand:
+  **You do NOT need to re-publish the config for the fix to apply.** The default
+  lives in code, and a published config predating 0.4.0 simply has no key —
+  verified in a real app: `config('laravel-jobs.allow_input_user_id')` returns
+  `false` with the old file in place. Re-publish only if you want to READ the new
+  block or opt in:
   `php artisan vendor:publish --tag=laravel-jobs-config --force`.
 
 - **The 401 no longer tells the caller how to spoof a candidate.** It read
