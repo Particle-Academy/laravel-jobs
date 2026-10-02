@@ -86,6 +86,21 @@ upgrading.
   whatever identity arrived. They verify that the caller was *consistent*, not
   that they are *who they claim*.
 
+  **How bad it was for you depended on `routes.middleware`, and the conventional
+  choice was the dangerous one.** The default is `['api']`, which is stateless and
+  carries no CSRF — so on the documented default, **the write vector was live**.
+  A host that mounted these on `web` instead got CSRF, and every write was
+  blocked (419) regardless of package version, leaving read-only disclosure.
+
+  That distinction was established by a consumer who measured all three vectors on
+  their own running site and corrected their own first report when the write came
+  back 419. Their point is the one to carry: the severity varied by a mounting
+  choice that has nothing to do with authentication, and hosts who did the normal
+  thing for an API were the most exposed. CSRF, where it helped, was not a control
+  anyone chose for this surface — it fell out of an unrelated decision, and
+  crediting it as deliberate protection lasts exactly until someone changes that
+  line.
+
   **What you must DO.** Almost certainly nothing:
 
   - **Your routes have `auth` on them** (via `routes.middleware`) → nothing. An
