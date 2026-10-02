@@ -33,6 +33,18 @@ upgrading.
   that an application *was* submitted, which is not true until the transaction
   commits. If it rolls back, the event should never have fired.
 
+  **"Our notifications are queued, so this did not affect us" is the wrong check,
+  and it is the one a careful host reaches for first.** The dangerous property was
+  never *"we send mail synchronously"* — it was **anything a listener touches is
+  inside the transaction**. A consumer running `ShouldQueue` notifications on the
+  `database` queue driver was still exposed: that driver writes its job row inside
+  the transaction, and their listener resolved `jobPosting->employer->user` there
+  too. Either throwing destroyed the application exactly as a dead SMTP server
+  would. Same bug, different trigger, and no host can fix it from outside.
+
+  That framing is theirs, established by reproducing the failure in their own app
+  in both directions rather than taking the measurement from a message.
+
   **What you must DO.** Almost certainly nothing. The events fire as before, a
   moment later, and still synchronously within the request.
 
