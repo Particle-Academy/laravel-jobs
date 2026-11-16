@@ -8,6 +8,12 @@ upgrading.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- Rebranded the display name to Fancy Dev Kit (README and package description). Package names, the npm scope, URLs and the `fancy-ui` MCP id are unchanged.
+
 ## [0.5.0] - 2026-10-02
 
 ### Fixed
@@ -230,8 +236,6 @@ answer an unrelated question about anonymous applications.
   moderation, so they never relied on this default. Their safety was an accident of
   having their own reason to re-check, not evidence the default was safe.
 
-
-## [Unreleased]
 
 ## 0.2.0 — 2026-08-07
 

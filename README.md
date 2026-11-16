@@ -3,7 +3,7 @@
 [![Fancified](art/fancified.svg)](https://particle.academy)
 
 Laravel package for job boards — employer job postings, a public listing, and
-candidate applications. The server half of the Fancy UI job board; the React
+candidate applications. The server half of the Fancy Dev Kit job board; the React
 half is [`@particle-academy/job-board`](https://github.com/Particle-Academy/job-board).
 
 ## Install
