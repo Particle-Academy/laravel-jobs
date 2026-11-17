@@ -6,6 +6,13 @@ Laravel package for job boards — employer job postings, a public listing, and
 candidate applications. The server half of the Fancy Dev Kit job board; the React
 half is [`@particle-academy/job-board`](https://github.com/Particle-Academy/job-board).
 
+<!-- fancy-agents-note:start -->
+> **For agents.** Every Fancy package, this one included, is listed on the
+> Fancy MCP catalog server at `https://ui.particle.academy/mcp` (streamable HTTP, no API key;
+> MCP id `fancy-ui`), with install commands and docs. How an agent installs
+> and uses this package is in [AGENTS.md](https://github.com/Particle-Academy/laravel-jobs/blob/main/AGENTS.md).
+<!-- fancy-agents-note:end -->
+
 ## Install
 
 ```sh
