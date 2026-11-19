@@ -14,6 +14,8 @@ use ParticleAcademy\LaravelJobs\Models\JobPosting;
  */
 class JobApplicationFactory extends Factory
 {
+    use UsesFakeData;
+
     protected $model = JobApplication::class;
 
     public function definition(): array
@@ -21,9 +23,9 @@ class JobApplicationFactory extends Factory
         return [
             'job_posting_id' => JobPosting::factory()->published(),
             'user_id'        => 1,
-            'cover_letter'   => $this->faker->paragraph(),
-            'contact_email'  => $this->faker->safeEmail(),
-            'contact_phone'  => $this->faker->phoneNumber(),
+            'cover_letter'   => $this->fakeData()->paragraph(),
+            'contact_email'  => $this->fakeData()->safeEmail(),
+            'contact_phone'  => $this->fakeData()->phoneNumber(),
             'status'         => ApplicationStatus::Submitted->value,
             'submitted_at'   => now(),
         ];

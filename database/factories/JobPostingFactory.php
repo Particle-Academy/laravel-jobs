@@ -14,20 +14,22 @@ use ParticleAcademy\LaravelJobs\Models\JobPosting;
  */
 class JobPostingFactory extends Factory
 {
+    use UsesFakeData;
+
     protected $model = JobPosting::class;
 
     public function definition(): array
     {
-        $title = $this->faker->jobTitle();
+        $title = $this->fakeData()->jobTitle();
 
         return [
             'employer_id'     => 1,
             'title'           => $title,
             'slug'            => JobPosting::generateSlug($title),
-            'description'     => $this->faker->paragraph(),
-            'requirements'    => $this->faker->sentence(),
-            'employment_type' => $this->faker->randomElement(EmploymentType::cases())->value,
-            'location'        => $this->faker->city().', '.$this->faker->stateAbbr(),
+            'description'     => $this->fakeData()->paragraph(),
+            'requirements'    => $this->fakeData()->sentence(),
+            'employment_type' => $this->fakeData()->randomElement(EmploymentType::cases())->value,
+            'location'        => $this->fakeData()->city().', '.$this->fakeData()->stateAbbr(),
             'is_remote'       => false,
             'pay_min'         => 20,
             'pay_max'         => 30,

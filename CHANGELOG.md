@@ -15,7 +15,11 @@ upgrading.
 - Rebranded the display name to Fancy Dev Kit (README and package description). Package names, the npm scope, URLs and the `fancy-ui` MCP id are unchanged.
 - **Docs:** `AGENTS.md` is now the guide to using this package (install, its entries on the Fancy MCP catalog server, API essentials, traps). The contributor notes it held moved to `CONTRIBUTING.md`, and `CLAUDE.md` is now a symlink to it. The README points to the MCP server and to `AGENTS.md`. No code changed; nothing to do.
 - CI: re-pin org third-party allowlist to 2614224
-- Tests moved to Pest; orchestra/testbench and phpunit/phpunit removed from require-dev. No runtime change. The suite now boots a hand-built Laravel host (`tests/TestCase.php`) on `laravel/framework`, added to `require-dev` as the framework this package integrates with (the integration-framework carve-out). `fakerphp/faker`, which the factories use and testbench used to bring in, is now a direct `require-dev`. `composer test` runs `pest`; CI runs `vendor/bin/pest`. Consumer action: none.
+- Tests moved to Pest; orchestra/testbench and phpunit/phpunit removed from require-dev. No runtime change. The suite now boots a hand-built Laravel host (`tests/TestCase.php`) on `laravel/framework`, added to `require-dev` as the framework this package integrates with (the integration-framework carve-out). `composer test` runs `pest`; CI runs `vendor/bin/pest`. Consumer action: none.
+
+### Removed
+
+- `fakerphp/faker` is no longer a dev dependency. It came in with testbench, was then added directly without approval, and fails the suite's three-month freshness bar for third-party code. The shipped factories now draw data through `UsesFakeData::fakeData()`: the host's Faker when the host has one (Laravel resolves it into `$this->faker`, so your locale and `$this->faker->seed()` still apply), otherwise the new first-party `Database\Factories\FakeData`, a small seeded generator covering only the methods the factories call (emails on `example.com`, phone numbers in the fictional 555-01xx range). Consumer action: none. With Faker in your app, factory output is unchanged; without it, `JobPosting::factory()` and `JobApplication::factory()` now work instead of failing with `Call to a member function jobTitle() on null`.
 
 ## [0.5.0] - 2026-10-02
 

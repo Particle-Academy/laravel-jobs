@@ -81,6 +81,10 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Factory data restarts from the same seed every test, so a test's
+        // fixtures do not depend on which tests ran before it.
+        \ParticleAcademy\LaravelJobs\Database\Factories\FakeData::reset();
+
         $this->defineDatabaseMigrations();
     }
 
