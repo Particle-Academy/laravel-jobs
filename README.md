@@ -183,7 +183,7 @@ invisible to a green suite here.
 ## Tests
 
 ```sh
-composer install && vendor/bin/phpunit
+composer install && vendor/bin/pest
 ```
 
 The suite configures the package against its own stand-in host models, so the

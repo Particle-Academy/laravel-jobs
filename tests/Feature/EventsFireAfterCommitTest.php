@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ParticleAcademy\LaravelJobs\Tests\Feature;
+namespace ParticleAcademy\LaravelJobs\Tests\Feature\EventsFireAfterCommitTest;
 
 use Illuminate\Support\Facades\Event;
 use ParticleAcademy\LaravelJobs\Enums\ApplicationStatus;
@@ -48,69 +48,63 @@ use RuntimeException;
  * suite over. The suite was green with the events never firing, because nothing in
  * it asserted that they do.
  */
-class EventsFireAfterCommitTest extends TestCase
-{
-    private function publishedPosting(): JobPosting
-    {
-        $employer = TestEmployer::query()->create(['name' => 'Acme Security', 'status' => 'approved']);
 
-        return JobPosting::factory()->published()->forEmployer($employer->id)->create();
-    }
+function publishedPosting(): JobPosting {
+    $employer = TestEmployer::query()->create(['name' => 'Acme Security', 'status' => 'approved']);
 
-    public function test_the_event_still_fires_from_the_real_service_path(): void
-    {
-        // Not Event::fake(). A fake records a dispatch attempt and would pass even
-        // if the after-commit deferral swallowed it forever.
-        $heard = [];
-        Event::listen(ApplicationSubmitted::class, function (ApplicationSubmitted $e) use (&$heard): void {
-            $heard[] = $e->application->id;
-        });
-
-        $application = (new ApplicationService())->submit($this->publishedPosting(), 42);
-
-        $this->assertSame(
-            [$application->id],
-            $heard,
-            'ApplicationSubmitted must still reach listeners -- a deferred event that never fires is silent',
-        );
-    }
-
-    public function test_a_throwing_listener_does_not_destroy_the_application(): void
-    {
-        // The reason for the change. Before it, this left zero rows.
-        Event::listen(ApplicationSubmitted::class, function (): void {
-            throw new RuntimeException('the mail server is down');
-        });
-
-        $posting = $this->publishedPosting();
-
-        try {
-            (new ApplicationService())->submit($posting, 42);
-        } catch (RuntimeException) {
-            // A listener blowing up still surfaces. What must NOT happen is the
-            // candidate's application disappearing with it.
-        }
-
-        $this->assertSame(1, JobApplication::query()->count());
-        $this->assertSame(1, $posting->fresh()->applications_count);
-
-        $application = JobApplication::query()->sole();
-        $this->assertSame(ApplicationStatus::Submitted, $application->status);
-    }
-
-    public function test_the_status_change_event_fires_too(): void
-    {
-        // changeStatus() is not inside a transaction, so this one is a guard
-        // against the deferral breaking the un-transacted path.
-        $application = (new ApplicationService())->submit($this->publishedPosting(), 42);
-
-        $heard = 0;
-        Event::listen(\ParticleAcademy\LaravelJobs\Events\ApplicationStatusChanged::class, function () use (&$heard): void {
-            $heard++;
-        });
-
-        (new ApplicationService())->changeStatus($application, ApplicationStatus::Reviewing);
-
-        $this->assertSame(1, $heard);
-    }
+    return JobPosting::factory()->published()->forEmployer($employer->id)->create();
 }
+
+test('the event still fires from the real service path', function () {
+    // Not Event::fake(). A fake records a dispatch attempt and would pass even
+    // if the after-commit deferral swallowed it forever.
+    $heard = [];
+    Event::listen(ApplicationSubmitted::class, function (ApplicationSubmitted $e) use (&$heard): void {
+        $heard[] = $e->application->id;
+    });
+
+    $application = (new ApplicationService())->submit(publishedPosting(), 42);
+
+    $this->assertSame(
+        [$application->id],
+        $heard,
+        'ApplicationSubmitted must still reach listeners -- a deferred event that never fires is silent',
+    );
+});
+
+test('a throwing listener does not destroy the application', function () {
+    // The reason for the change. Before it, this left zero rows.
+    Event::listen(ApplicationSubmitted::class, function (): void {
+        throw new RuntimeException('the mail server is down');
+    });
+
+    $posting = publishedPosting();
+
+    try {
+        (new ApplicationService())->submit($posting, 42);
+    } catch (RuntimeException) {
+        // A listener blowing up still surfaces. What must NOT happen is the
+        // candidate's application disappearing with it.
+    }
+
+    $this->assertSame(1, JobApplication::query()->count());
+    $this->assertSame(1, $posting->fresh()->applications_count);
+
+    $application = JobApplication::query()->sole();
+    $this->assertSame(ApplicationStatus::Submitted, $application->status);
+});
+
+test('the status change event fires too', function () {
+    // changeStatus() is not inside a transaction, so this one is a guard
+    // against the deferral breaking the un-transacted path.
+    $application = (new ApplicationService())->submit(publishedPosting(), 42);
+
+    $heard = 0;
+    Event::listen(\ParticleAcademy\LaravelJobs\Events\ApplicationStatusChanged::class, function () use (&$heard): void {
+        $heard++;
+    });
+
+    (new ApplicationService())->changeStatus($application, ApplicationStatus::Reviewing);
+
+    $this->assertSame(1, $heard);
+});

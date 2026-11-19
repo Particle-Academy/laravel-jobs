@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ParticleAcademy\LaravelJobs\Tests\Feature;
+namespace ParticleAcademy\LaravelJobs\Tests\Feature\AnonymousCandidateTest;
 
 use ParticleAcademy\LaravelJobs\Models\JobApplication;
 use ParticleAcademy\LaravelJobs\Models\JobPosting;
@@ -17,57 +17,49 @@ use ParticleAcademy\LaravelJobs\Tests\TestCase;
  * Found by dogfooding: a route smoke test in a host app caught
  * GET /api/jobs/my-applications returning 500 to a guest.
  */
-class AnonymousCandidateTest extends TestCase
-{
-    private function publishedPosting(): JobPosting
-    {
-        $employer = TestEmployer::query()->create(['name' => 'Acme Security', 'status' => 'approved']);
 
-        return JobPosting::factory()->published()->forEmployer($employer->id)->create();
-    }
+function publishedPosting(): JobPosting {
+    $employer = TestEmployer::query()->create(['name' => 'Acme Security', 'status' => 'approved']);
 
-    public function test_listing_your_applications_anonymously_is_unauthorized_not_an_error(): void
-    {
-        $this->getJson('/api/jobs/my-applications')
-            ->assertStatus(401)
-            // The message deliberately does NOT name `user_id`. It used to read
-            // "Authenticate the request or supply user_id", which told an
-            // unauthenticated caller how to spoof a candidate -- see
-            // CandidateIdentitySpoofTest.
-            ->assertJsonPath('message', 'Unable to resolve the candidate for this request.');
-    }
-
-    public function test_applying_anonymously_is_unauthorized_not_an_error(): void
-    {
-        $posting = $this->publishedPosting();
-
-        $this->postJson("/api/jobs/postings/{$posting->slug}/applications")
-            ->assertStatus(401);
-    }
-
-    public function test_withdrawing_anonymously_is_unauthorized_not_an_error(): void
-    {
-        $application = JobApplication::factory()->create([
-            'job_posting_id' => $this->publishedPosting()->id,
-        ]);
-
-        $this->postJson("/api/jobs/applications/{$application->id}/withdraw")
-            ->assertStatus(401);
-    }
-
-    public function test_the_status_applies_to_a_plain_browser_request_too(): void
-    {
-        // Not getJson(). A host that mounts these on `web` gets browser-shaped
-        // requests, and render() returns null for those — so without
-        // HttpExceptionInterface the status was lost and Laravel produced a 500.
-        $this->get('/api/jobs/my-applications')->assertStatus(401);
-    }
-
-    public function test_the_public_board_stays_open_to_anonymous_requests(): void
-    {
-        // The fix must not have closed the parts that are meant to be public.
-        $this->publishedPosting();
-
-        $this->getJson('/api/jobs/postings')->assertOk()->assertJsonCount(1, 'data');
-    }
+    return JobPosting::factory()->published()->forEmployer($employer->id)->create();
 }
+
+test('listing your applications anonymously is unauthorized not an error', function () {
+    $this->getJson('/api/jobs/my-applications')
+        ->assertStatus(401)
+        // The message deliberately does NOT name `user_id`. It used to read
+        // "Authenticate the request or supply user_id", which told an
+        // unauthenticated caller how to spoof a candidate -- see
+        // CandidateIdentitySpoofTest.
+        ->assertJsonPath('message', 'Unable to resolve the candidate for this request.');
+});
+
+test('applying anonymously is unauthorized not an error', function () {
+    $posting = publishedPosting();
+
+    $this->postJson("/api/jobs/postings/{$posting->slug}/applications")
+        ->assertStatus(401);
+});
+
+test('withdrawing anonymously is unauthorized not an error', function () {
+    $application = JobApplication::factory()->create([
+        'job_posting_id' => publishedPosting()->id,
+    ]);
+
+    $this->postJson("/api/jobs/applications/{$application->id}/withdraw")
+        ->assertStatus(401);
+});
+
+test('the status applies to a plain browser request too', function () {
+    // Not getJson(). A host that mounts these on `web` gets browser-shaped
+    // requests, and render() returns null for those — so without
+    // HttpExceptionInterface the status was lost and Laravel produced a 500.
+    $this->get('/api/jobs/my-applications')->assertStatus(401);
+});
+
+test('the public board stays open to anonymous requests', function () {
+    // The fix must not have closed the parts that are meant to be public.
+    publishedPosting();
+
+    $this->getJson('/api/jobs/postings')->assertOk()->assertJsonCount(1, 'data');
+});

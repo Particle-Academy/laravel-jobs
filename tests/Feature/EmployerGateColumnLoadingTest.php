@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace ParticleAcademy\LaravelJobs\Tests\Feature;
+namespace ParticleAcademy\LaravelJobs\Tests\Feature\EmployerGateColumnLoadingTest;
 
 use ParticleAcademy\LaravelJobs\Support\EmployerGate;
 use ParticleAcademy\LaravelJobs\Tests\Fixtures\TestEmployer;
@@ -38,107 +38,92 @@ use ParticleAcademy\LaravelJobs\Tests\TestCase;
  * reason to re-check — not evidence the default was safe. A host that used the
  * shipped default was exposed.
  */
-class EmployerGateColumnLoadingTest extends TestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
 
-        config()->set('laravel-jobs.employer_model', TestEmployer::class);
-        config()->set('laravel-jobs.employer_gate.column', 'status');
-        config()->set('laravel-jobs.employer_gate.approved', 'approved');
-    }
+beforeEach(function () {
+    config()->set('laravel-jobs.employer_model', TestEmployer::class);
+    config()->set('laravel-jobs.employer_gate.column', 'status');
+    config()->set('laravel-jobs.employer_gate.approved', 'approved');
+});
 
-    private function gate(): EmployerGate
-    {
-        return new EmployerGate();
-    }
-
-    public function test_a_fully_loaded_unapproved_employer_is_denied(): void
-    {
-        $employer = TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
-
-        $this->assertFalse($this->gate()->allowsPublishing($employer));
-    }
-
-    public function test_a_fully_loaded_approved_employer_is_allowed(): void
-    {
-        $employer = TestEmployer::query()->create(['name' => 'Good Co', 'status' => 'approved']);
-
-        $this->assertTrue($this->gate()->allowsPublishing($employer));
-    }
-
-    public function test_a_select_that_omits_the_gate_column_does_NOT_bypass_the_gate(): void
-    {
-        // THE BUG. A host narrowing a query for performance -- elsewhere, long
-        // after the gate was configured and tested -- moved from "moderation
-        // enforced" to "moderation off" with no signal at any layer.
-        TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
-
-        $narrowed = TestEmployer::query()->select(['id', 'name'])->first();
-
-        $this->assertArrayNotHasKey('status', $narrowed->getAttributes(), 'the fixture must not load the column, or this asserts nothing');
-        $this->assertFalse($this->gate()->allowsPublishing($narrowed), 'a select() must not disable moderation');
-    }
-
-    public function test_a_narrowed_APPROVED_employer_is_still_allowed(): void
-    {
-        // The fix must not simply deny whenever the column is absent: that would
-        // trade a silent bypass for a silent lockout, and a host narrowing a
-        // query would find every publish refused instead.
-        TestEmployer::query()->create(['name' => 'Good Co', 'status' => 'approved']);
-
-        $narrowed = TestEmployer::query()->select(['id', 'name'])->first();
-
-        $this->assertTrue($this->gate()->allowsPublishing($narrowed));
-    }
-
-    public function test_an_id_is_still_resolved_and_gated(): void
-    {
-        $employer = TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
-
-        $this->assertFalse($this->gate()->allowsPublishing($employer->id));
-    }
-
-    public function test_a_column_the_table_does_not_have_stays_FORGIVING(): void
-    {
-        // The original intent, preserved. A host that configures a column its
-        // employer model genuinely does not have is misconfigured, and refusing
-        // every publish would be baffling rather than informative. The
-        // difference from the bug is "the table has no such column" versus "this
-        // instance did not load one that exists" -- the first is the host's
-        // mistake, the second was ours.
-        config()->set('laravel-jobs.employer_gate.column', 'no_such_column');
-
-        $employer = TestEmployer::query()->create(['name' => 'Any Co', 'status' => 'pending']);
-
-        $this->assertTrue($this->gate()->allowsPublishing($employer));
-    }
-
-    public function test_an_unconfigured_gate_allows_everyone(): void
-    {
-        config()->set('laravel-jobs.employer_gate.column', null);
-
-        $employer = TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
-
-        $this->assertTrue($this->gate()->allowsPublishing($employer));
-    }
-
-    public function test_a_missing_employer_is_denied(): void
-    {
-        $this->assertFalse($this->gate()->allowsPublishing(999999));
-        $this->assertFalse($this->gate()->allowsPublishing(null));
-    }
-
-    public function test_a_row_deleted_under_a_narrowed_instance_is_denied(): void
-    {
-        // Fail CLOSED. The instance says nothing about approval and the row is
-        // gone, so there is nothing that could authorise a publish.
-        TestEmployer::query()->create(['name' => 'Gone Co', 'status' => 'approved']);
-
-        $narrowed = TestEmployer::query()->select(['id', 'name'])->first();
-        TestEmployer::query()->whereKey($narrowed->getKey())->delete();
-
-        $this->assertFalse($this->gate()->allowsPublishing($narrowed));
-    }
+function gate(): EmployerGate {
+    return new EmployerGate();
 }
+
+test('a fully loaded unapproved employer is denied', function () {
+    $employer = TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
+
+    $this->assertFalse(gate()->allowsPublishing($employer));
+});
+
+test('a fully loaded approved employer is allowed', function () {
+    $employer = TestEmployer::query()->create(['name' => 'Good Co', 'status' => 'approved']);
+
+    $this->assertTrue(gate()->allowsPublishing($employer));
+});
+
+test('a select that omits the gate column does NOT bypass the gate', function () {
+    // THE BUG. A host narrowing a query for performance -- elsewhere, long
+    // after the gate was configured and tested -- moved from "moderation
+    // enforced" to "moderation off" with no signal at any layer.
+    TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
+
+    $narrowed = TestEmployer::query()->select(['id', 'name'])->first();
+
+    $this->assertArrayNotHasKey('status', $narrowed->getAttributes(), 'the fixture must not load the column, or this asserts nothing');
+    $this->assertFalse(gate()->allowsPublishing($narrowed), 'a select() must not disable moderation');
+});
+
+test('a narrowed APPROVED employer is still allowed', function () {
+    // The fix must not simply deny whenever the column is absent: that would
+    // trade a silent bypass for a silent lockout, and a host narrowing a
+    // query would find every publish refused instead.
+    TestEmployer::query()->create(['name' => 'Good Co', 'status' => 'approved']);
+
+    $narrowed = TestEmployer::query()->select(['id', 'name'])->first();
+
+    $this->assertTrue(gate()->allowsPublishing($narrowed));
+});
+
+test('an id is still resolved and gated', function () {
+    $employer = TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
+
+    $this->assertFalse(gate()->allowsPublishing($employer->id));
+});
+
+test('a column the table does not have stays FORGIVING', function () {
+    // The original intent, preserved. A host that configures a column its
+    // employer model genuinely does not have is misconfigured, and refusing
+    // every publish would be baffling rather than informative. The
+    // difference from the bug is "the table has no such column" versus "this
+    // instance did not load one that exists" -- the first is the host's
+    // mistake, the second was ours.
+    config()->set('laravel-jobs.employer_gate.column', 'no_such_column');
+
+    $employer = TestEmployer::query()->create(['name' => 'Any Co', 'status' => 'pending']);
+
+    $this->assertTrue(gate()->allowsPublishing($employer));
+});
+
+test('an unconfigured gate allows everyone', function () {
+    config()->set('laravel-jobs.employer_gate.column', null);
+
+    $employer = TestEmployer::query()->create(['name' => 'Pending Co', 'status' => 'pending']);
+
+    $this->assertTrue(gate()->allowsPublishing($employer));
+});
+
+test('a missing employer is denied', function () {
+    $this->assertFalse(gate()->allowsPublishing(999999));
+    $this->assertFalse(gate()->allowsPublishing(null));
+});
+
+test('a row deleted under a narrowed instance is denied', function () {
+    // Fail CLOSED. The instance says nothing about approval and the row is
+    // gone, so there is nothing that could authorise a publish.
+    TestEmployer::query()->create(['name' => 'Gone Co', 'status' => 'approved']);
+
+    $narrowed = TestEmployer::query()->select(['id', 'name'])->first();
+    TestEmployer::query()->whereKey($narrowed->getKey())->delete();
+
+    $this->assertFalse(gate()->allowsPublishing($narrowed));
+});

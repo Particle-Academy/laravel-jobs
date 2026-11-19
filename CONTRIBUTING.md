@@ -61,10 +61,12 @@ employer          user (both host-owned, resolved from config)
 
 ```bash
 composer install
-vendor/bin/phpunit
+vendor/bin/pest
 ```
 
-`tests/TestCase.php` runs on `orchestra/testbench` with in-memory SQLite, creates
+The suite is Pest. `tests/TestCase.php` is a hand-built Laravel host on
+`laravel/framework` alone (no `orchestra/testbench`, which the owner declined)
+with in-memory SQLite. It creates
 the host-owned `users` and `employers` tables itself, and points the package's
 config at `Tests\Fixtures\TestUser` / `TestEmployer`. That is what keeps the
 host-model config an actual contract rather than a comment.
