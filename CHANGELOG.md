@@ -12,6 +12,8 @@ upgrading.
 
 ### Changed
 
+- **BREAKING:** Laravel 13 is the minimum; an app on Laravel 12 or older can no longer install this; upgrade Laravel. On Laravel 13, do nothing.
+- Requires `laravel/framework` `^13.0`, because `src/` uses `Illuminate\Foundation`, which ships only in the framework. It moved from `require-dev` to `require`.
 - Rebranded the display name to Fancy Dev Kit (README and package description). Package names, the npm scope, URLs and the `fancy-ui` MCP id are unchanged.
 - **Docs:** `AGENTS.md` is now the guide to using this package (install, its entries on the Fancy MCP catalog server, API essentials, traps). The contributor notes it held moved to `CONTRIBUTING.md`, and `CLAUDE.md` is now a symlink to it. The README points to the MCP server and to `AGENTS.md`. No code changed; nothing to do.
 - CI: re-pin org third-party allowlist to 2614224
